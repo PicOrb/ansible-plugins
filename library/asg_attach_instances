@@ -47,8 +47,10 @@ def main():
     argument_spec.update(
         dict(
             asg_name=dict(required=True),
+            region=dict(required=True),
+            instances=dict(default=[]),
+            )
         )
-    )
     module = AnsibleModule(
         argument_spec=argument_spec,
     )
