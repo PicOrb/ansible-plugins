@@ -1,0 +1,83 @@
+#!/usr/bin/python
+
+DOCUMENTATION = '''
+---
+module: asg_attach_instances
+short_description: Attach instances to given ASG
+description:
+  - Attach EC2 instances to a given ASG by name
+author: Ericson Cepeda
+requirements:
+  - Requires the Boto module
+options:
+  asg_name:
+    description:
+      - ASG name to attach the instances with.
+    required: true
+    default: null
+    aliases: []
+extends_documentation_fragment: aws
+
+'''
+
+EXAMPLES = '''
+
+  - name: attach instances to ASG
+    module: asg_attach_instances
+    args:
+        asg_name:"example_asgname"
+        region:"{{ region }}"
+        instances: ec2.instances
+    register: asg_attach
+
+  - debug: var=asg_attach
+
+'''
+
+try:
+    import boto
+    import boto.cloudformation
+except ImportError:
+    print "failed=True msg='boto required for this module'"
+    exit(1)
+
+
+def main():
+    argument_spec = ec2_argument_spec()
+    argument_spec.update(
+        dict(
+            asg_name=dict(required=True),
+        )
+    )
+    module = AnsibleModule(
+        argument_spec=argument_spec,
+    )
+
+    asg_name = module.params['asg_name']
+    region = module.params['region']
+    instances = module.params['instances']
+
+    asg = boto.ec2.autoscale.connect_to_region(region)
+
+    try:
+        attach = asg.attach_instances(asg_name, [instance.id for instance in instances])
+    except boto.exception.BotoServerError as e:
+        if 'does not exist' in e.body:
+            module.fail_json(msg="The {0} asg was not found in {1}".format(asg_name, region))
+        else:
+            module.fail_json(msg=e.body)
+
+    result = {
+        'status': '',
+    }
+
+    for output in stack.outputs:
+        result['status'] = attach
+
+    module.exit_json(**result)
+
+# import module snippets
+from ansible.module_utils.basic import *
+from ansible.module_utils.ec2 import *
+
+main()
